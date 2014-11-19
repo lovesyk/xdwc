@@ -1,6 +1,5 @@
 <?php
-class Pack
-{
+class Pack {
 	public $botName, $number, $downloads, $size, $name;
 	function __construct(&$botName, $number, $downloads, $size, $name) {
 		$this->botName = &$botName;
@@ -10,22 +9,28 @@ class Pack
 		$this->name = $name;
 	}
 }
+class Column {
+	public $name, $file;
+	function __construct($name, $file) {
+		$this->name = $name;
+		$this->file = $file;
+	}
+}
 
 // prepare search query
 global $wp_query;
 if ($wp_query->query_vars['xdccs'] !== '') {
 	$queryTerms = explode(' ', preg_quote(urldecode($wp_query->query_vars['xdccs']), '/'));
-	foreach ($queryTerms as $key => $queryTerm){
+	foreach ($queryTerms as $key => $queryTerm) {
 		$queryTerms[$key] = '(?=.*' . $queryTerm . ')';
 	}
 	$query = '/' . implode($queryTerms) . '/i';
 }
 
 // prepare requested bot packs
-$listFiles = array( '/home/user/.config/iroffer/mybot.txt' );
+$listFiles = preg_split('/\R/', get_option('list_files'));
 $packs = array();
-foreach ($listFiles as $listFile)
-{
+foreach ($listFiles as $listFile) {
 	$handle = fopen($listFile, 'r');
 	if ($handle) {
 		$botName = '';
@@ -49,7 +54,16 @@ foreach ($listFiles as $listFile)
 usort($packs, function($a, $b) // sort pack objects by their name value
 {
     return strcmp($a->name, $b->name); // not UTF-8 aware yet
-}); ?>
+}); 
+
+// prepare additional columns
+$optionAdditionalColumns = preg_split('/\R/', get_option('additional_columns'));
+$additionalColumns = array();
+foreach ($optionAdditionalColumns as $optionAdditionalColumn) {
+	$optionAdditionalColumnSplit = preg_split('/=/', $optionAdditionalColumn);
+	array_push($additionalColumns, new Column($optionAdditionalColumnSplit[0], $optionAdditionalColumnSplit[1]));
+}
+?>
 
 <form role="search" method="get" class="search-form" action="<?php echo plugin_dir_url(__FILE__); ?>search-redirect.php">
 	<label>
@@ -66,6 +80,9 @@ usort($packs, function($a, $b) // sort pack objects by their name value
 		<th class="xdcc-row-header-packnumber">Pack Number</th>
 		<th class="xdcc-row-header-packsize">File Size</th>
 		<th class="xdcc-row-header-packname">File Name</th>
+<?php foreach ($additionalColumns as $additionalColumn) { ?>
+		<th class="xdcc-data-pack-<?php echo sanitize_title($additionalColumn->name); ?>"><?php echo $additionalColumn->name; ?></th>
+<?php } ?>
 	</tr>
 <?php
 foreach ($packs as $pack) { ?>
@@ -74,6 +91,9 @@ foreach ($packs as $pack) { ?>
 		<td class="xdcc-data-pack-packnumber"><?php echo $pack->number; ?></td>
 		<td class="xdcc-data-pack-packsize"><?php echo $pack->size; ?></td>
 		<td class="xdcc-data-pack-packname"><?php echo $pack->name; ?></td>
+<?php foreach ($additionalColumns as $additionalColumn) { ?>
+		<td class="xdcc-data-pack-<?php echo sanitize_title($additionalColumn->name); ?>"><?php include $additionalColumn->file; ?></td>
+<?php } ?>
 	</tr>
 <?php } ?>
 </table>

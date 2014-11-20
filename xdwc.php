@@ -37,7 +37,7 @@ if (is_admin()) {
 
 function register_xdwcsettings() {
 	register_setting('xdwc-group', 'list_files');
-	register_setting('xdwc-group', 'additional_columns');
+	register_setting('xdwc-group', 'columns');
   //register_setting( 'myoption-group', 'some_other_option' );
   //register_setting( 'myoption-group', 'option_etc' );
 }
@@ -58,16 +58,16 @@ do_settings_sections('xdwc-group'); ?>
 				</td>
 			</tr>
 			<tr>
-				<th scope="row"><label for="additional_columns">Additional columns</label></th>
+				<th scope="row"><label for="columns">Columns</label></th>
 				<td>
-					<label for="additional_columns">
-						One php file per line. Each of them will be included as a new column. You may use the $pack object with the following properties: botName, number, downloads, size and name.<br />
-						Example for a column with the download count of each pack:<br />
-						Download Count=download-count.php<br />
-						with download-count.php (inside xdwc plugin directory) containing the following:<br />
-						&lt;?php echo $pack->downloads;
+					<label for="columns">
+						One column per line. Format: Header=Function<br />
+						Header: Title used for the column header<br />
+						Function: A function inside of user-functions.php in xdwc's directory that takes $pack as input and echoes what the column should display.<br />
+						$pack is an object with the following properties: botName, number, downloads, size and name.<br />
+						If there is no user-functions.php present, user-functions-sample.php will be used.
 					</label>
-					<textarea name="additional_columns" id="additional_columns" class="large-text code" rows="3" placeholder="My Column=my-script.php" ><?php echo get_option('additional_columns'); ?></textarea>
+					<textarea name="columns" id="columns" class="large-text code" rows="3" placeholder="Header=Function" ><?php echo get_option('columns'); ?></textarea>
 				</td>
 			</tr>
 		</table>

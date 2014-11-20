@@ -10,10 +10,10 @@ class Pack {
 	}
 }
 class Column {
-	public $name, $file;
-	function __construct($name, $file) {
-		$this->name = $name;
-		$this->file = $file;
+	public $header, $function;
+	function __construct($header, $function) {
+		$this->header = $header;
+		$this->function = $function;
 	}
 }
 
@@ -28,7 +28,7 @@ if ($wp_query->query_vars['xdccs'] !== '') {
 }
 
 // prepare requested bot packs
-$listFiles = preg_split('/\R/', get_option('list_files'));
+$listFiles = PrepareListFiles();
 $packs = array();
 foreach ($listFiles as $listFile) {
 	$handle = fopen($listFile, 'r');
@@ -56,13 +56,7 @@ usort($packs, function($a, $b) // sort pack objects by their name value
     return strcmp($a->name, $b->name); // not UTF-8 aware yet
 }); 
 
-// prepare additional columns
-$optionAdditionalColumns = preg_split('/\R/', get_option('additional_columns'));
-$additionalColumns = array();
-foreach ($optionAdditionalColumns as $optionAdditionalColumn) {
-	$optionAdditionalColumnSplit = preg_split('/=/', $optionAdditionalColumn);
-	array_push($additionalColumns, new Column($optionAdditionalColumnSplit[0], $optionAdditionalColumnSplit[1]));
-}
+$columns = PrepareColumns();
 ?>
 
 <form role="search" method="get" class="search-form" action="<?php echo plugin_dir_url(__FILE__); ?>search-redirect.php">
@@ -76,25 +70,37 @@ foreach ($optionAdditionalColumns as $optionAdditionalColumn) {
 <?php if (!empty($packs)) { // output requested bot packs ?>
 <table class="xdcc-table">
 	<tr class="xdcc-row-header">
-		<th class="xdcc-row-header-botname">Bot Name</th>
-		<th class="xdcc-row-header-packnumber">Pack Number</th>
-		<th class="xdcc-row-header-packsize">File Size</th>
-		<th class="xdcc-row-header-packname">File Name</th>
-<?php foreach ($additionalColumns as $additionalColumn) { ?>
-		<th class="xdcc-data-pack-<?php echo sanitize_title($additionalColumn->name); ?>"><?php echo $additionalColumn->name; ?></th>
+<?php foreach ($columns as $column) { ?>
+		<th class="xdcc-row-header-<?php echo sanitize_title($column->header); ?>"><?php echo $column->header; ?></th>
 <?php } ?>
 	</tr>
 <?php
 foreach ($packs as $pack) { ?>
 	<tr class="xdcc-row-pack" onclick="alert('/MSG <?php echo $pack->botName; ?> XDCC SEND <?php echo $pack->number; ?>');">
-		<td class="xdcc-data-pack-botname"><?php echo $pack->botName; ?></td>
-		<td class="xdcc-data-pack-packnumber"><?php echo $pack->number; ?></td>
-		<td class="xdcc-data-pack-packsize"><?php echo $pack->size; ?></td>
-		<td class="xdcc-data-pack-packname"><?php echo $pack->name; ?></td>
-<?php foreach ($additionalColumns as $additionalColumn) { ?>
-		<td class="xdcc-data-pack-<?php echo sanitize_title($additionalColumn->name); ?>"><?php include $additionalColumn->file; ?></td>
+<?php foreach ($columns as $column) { ?>
+		<td class="xdcc-data-pack-<?php echo sanitize_title($column->header); ?>"><?php call_user_func($column->function, $pack); ?></td>
 <?php } ?>
 	</tr>
 <?php } ?>
 </table>
 <?php }
+
+function PrepareColumns() { // get columns as set in WordPress back-end and output array with Column objects
+	$userFunctionsBase = 'user-functions';
+	if (stream_resolve_include_path("{$userFunctionsBase}.php")) {
+		include "{$userFunctionsBase}.php";
+	} else {
+		include "{$userFunctionsBase}-sample.php";
+	}
+	$optionColumns = preg_split('/\R/', get_option('columns'));
+	$columns = array();
+	foreach ($optionColumns as $optionColumn) {
+		$optionColumnSplit = preg_split('/=/', $optionColumn);
+		array_push($columns, new Column($optionColumnSplit[0], $optionColumnSplit[1]));
+	}
+	return $columns;
+}
+
+function PrepareListFiles() { // get list files as set in WordPress back-end and output array with list file paths
+	return preg_split('/\R/', get_option('list_files'));
+}

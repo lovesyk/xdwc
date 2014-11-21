@@ -14,14 +14,43 @@ function get_xdcc() {
     return $mail;
 }
 
+function GetColumns() { // get columns as set in WordPress back-end and output array with Column objects
+	$userFunctionsBase = 'user-functions';
+	if (stream_resolve_include_path("{$userFunctionsBase}.php")) {
+		include "{$userFunctionsBase}.php";
+	} else {
+		include "{$userFunctionsBase}-sample.php";
+	}
+	$optionColumns = preg_split('/\R/', get_option('columns'));
+	$columns = array();
+	foreach ($optionColumns as $optionColumn) {
+		$optionColumnSplit = preg_split('/=(?!.*=)/u', $optionColumn);
+		array_push($columns, new Column($optionColumnSplit[0], $optionColumnSplit[1]));
+	}
+	return $columns;
+}
+
+function GetListFiles() { // get list files as set in WordPress back-end and output array with list file paths
+	return preg_split('/\R/', get_option('list_files'));
+}
+
+function GetQueryString() {
+	global $wp_query;
+	if (isset($wp_query->query_vars['xs'])) {
+		return urldecode($wp_query->query_vars['xs']);
+	} else {
+		return '';
+	}
+}
+
 function create_new_url_querystring()
 {
     add_rewrite_rule(
         '^xdcc/search(/([^/]*))?$',
-        'index.php?pagename=xdcc&xdccs=$matches[2]',
+        'index.php?pagename=xdcc&xs=$matches[2]',
         'top'
     );
-	add_rewrite_tag('%xdccs%','([^/]*)');
+	add_rewrite_tag('%xs%','([^/]*)');
 	flush_rewrite_rules();
 }
 add_action('init', 'create_new_url_querystring');

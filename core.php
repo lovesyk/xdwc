@@ -37,7 +37,17 @@ function CheckFile($file) {
 	return is_file($file);
 }
 
-function PrepareListFile($listFile) {
+function FetchRemoteListFile($source, $destination) { // fetch remote list file from $source and put it as $destination locally using cURL
+	$curl = curl_init();
+	curl_setopt($curl, CURLOPT_URL, $source);
+	curl_setopt($curl, CURLOPT_FILE, $destination); 
+	curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 5);
+	$result = curl_exec($curl);
+	curl_close($curl);
+	return $result;
+}
+
+function PrepareListFile($listFile) { // check if specified file exists locally and if not, fetch the remote location first
 	if (CheckFile($listFile)) { // if list file exists on the local system, use it right away
 		return $listFile; 
 	} else {
@@ -46,8 +56,13 @@ function PrepareListFile($listFile) {
 		if (CheckFile($localTarget) && (time() - filemtime($localTarget)) < 500) { // cache hit: cached list file exists locally and is still valid
 			return $localTarget;
 		} else {
-			// ToDo: cURL
-		}
+			$result = FetchRemoteListFile($listFile, $localTarget);
+			if ($result) {
+				return $localTarget;
+			} else {
+				return null;
+			}
+		} 
 	}
 }
 

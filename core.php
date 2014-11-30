@@ -1,4 +1,7 @@
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 class Pack {
 	public $botName, $number, $downloads, $size, $name;
 	function __construct(&$botName, $number, $downloads, $size, $name) {
@@ -8,6 +11,22 @@ class Pack {
 		$this->size = $size;
 		$this->name = $name;
 	}
+}
+
+function PackBotName($pack) {
+	echo $pack->botName;
+}
+function PackNumber($pack) {
+	echo $pack->number;
+}
+function PackSize($pack) {
+	echo $pack->size;
+}
+function PackName($pack) {
+	echo $pack->name;
+}
+function PackDownloads($pack) {
+	echo $pack->downloads;
 }
 
 class Column {
@@ -37,31 +56,26 @@ function CheckFile($file) {
 	return is_file($file);
 }
 
-function FetchRemoteListFile($source, $destination) { // fetch remote list file from $source and put it as $destination locally using cURL
-	$curl = curl_init();
-	curl_setopt($curl, CURLOPT_URL, $source);
-	curl_setopt($curl, CURLOPT_FILE, $destination); 
-	curl_setopt($curl, CURLOPT_CONNECTTIMEOUT, 5);
-	$result = curl_exec($curl);
-	curl_close($curl);
-	return $result;
+function FetchRemoteListFile($url, $destination) { // fetch remote list file from $url and put it as $destination locally
+	require_once ABSPATH . 'wp-admin/includes/file.php';
+	$temp_file = download_url($url, LISTFILETIMEOUT);
+	if (!is_wp_error($temp_file)) {
+		rename($temp_file, $destination);
+		return $destination;
+	}
+	return false;
 }
 
 function PrepareListFile($listFile) { // check if specified file exists locally and if not, fetch the remote location first
-	if (CheckFile($listFile)) { // if list file exists on the local system, use it right away
-		return $listFile; 
+	$listFileLocal = realpath($listFile);
+	if (CheckFile($listFileLocal)) { // if list file exists on the local system, use it right away
+		return $listFileLocal; 
 	} else {
-		$base = WP_CONTENT_DIR . '/xdwc/';
-		$localTarget = $base . md5($listFile) . '.txt';
-		if (CheckFile($localTarget) && (time() - filemtime($localTarget)) < 500) { // cache hit: cached list file exists locally and is still valid
+		$localTarget = XDWCTEMP . md5($listFile) . '.txt';
+		if (CheckFile($localTarget) && (time() - filemtime($localTarget)) < LISTFILECACHEPERIOD) { // cache hit: cached list file exists locally and is still valid
 			return $localTarget;
 		} else {
-			$result = FetchRemoteListFile($listFile, $localTarget);
-			if ($result) {
-				return $localTarget;
-			} else {
-				return null;
-			}
+			return FetchRemoteListFile($listFile, $localTarget);
 		} 
 	}
 }
@@ -74,10 +88,8 @@ $listFiles = GetListFiles(); // get an array of list files
 // get requested packs
 $packs = array();
 foreach ($listFiles as $listFile) {
-	$listFile = PrepareListFile($listFile); // check if list file is on a remote location and if yes, fetch it first
-	$handle = fopen($listFile, 'r');
-	if ($handle) {
-		$botName = '';
+	if ($listFile = PrepareListFile($listFile)) {
+		$handle = fopen($listFile, 'r');
 		if (fgets($handle) !== false // skip first two useless lines
 			&& fgets($handle) !== false
 			&& ($line = fgets($handle)) !== false // 3rd line exists and contains the bot name
@@ -91,9 +103,10 @@ foreach ($listFiles as $listFile) {
 					array_push($packs, new Pack($botName, $match[1], $match[2], $match[3], $match[4])); // create Pack object and add it to pack array
 				}
 			}
+			unset($botName);
 		}
+		fclose($handle);
 	}
-	fclose($handle);
 }
 usort($packs, function($a, $b) // sort Pack objects by their name value
 {
@@ -106,7 +119,7 @@ $columns = GetColumns(); // get an array of Column objects
 <form role="search" method="get" class="search-form" action="<?php echo plugin_dir_url(__FILE__); ?>search-redirect.php">
 	<label>
 		<span class="screen-reader-text"><?php echo _x( 'Search for:', 'label' ) ?></span>
-		<input type="search" class="search-field" placeholder="<?php echo esc_attr_x( 'Search …', 'placeholder' ) ?>" value="<?php echo get_search_query() ?>" name="xdccs" title="<?php echo esc_attr_x( 'Search for:', 'label' ) ?>" />
+		<input type="search" class="search-field" placeholder="<?php echo esc_attr_x( 'Search …', 'placeholder' ) ?>" value="<?php echo get_search_query() ?>" name="xdwcs" title="<?php echo esc_attr_x( 'Search for:', 'label' ) ?>" />
 	</label>
 	<input type="submit" class="search-submit" value="<?php echo esc_attr_x( 'Search', 'submit button' ) ?>" />
 </form>

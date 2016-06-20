@@ -38,7 +38,7 @@ class Column {
 }
 
 function GetQuery() {
-	$queryString = GetQueryString();
+	$queryString = xdwc_get_query_string();
 	$queryTerms = preg_split('/\s+/', preg_quote($queryString, '/'), -1, PREG_SPLIT_NO_EMPTY); // split query string into terms at any kind of whitespace and do not keep empty ones
 	foreach ($queryTerms as $key => $queryTerm) {
 		$queryTerms[$key] = '(?=.*' . $queryTerm . ')'; // add "AND" operator to each query term
@@ -58,7 +58,7 @@ function CheckFile($file) {
 
 function FetchRemoteListFile($url, $destination) { // fetch remote list file from $url and put it as $destination locally
 	require_once ABSPATH . 'wp-admin/includes/file.php';
-	$temp_file = download_url($url, LISTFILETIMEOUT);
+	$temp_file = download_url($url, XDWC_LIST_FILE_TIMEOUT);
 	if (!is_wp_error($temp_file)) {
 		rename($temp_file, $destination);
 		return $destination;
@@ -71,8 +71,8 @@ function PrepareListFile($listFile) { // check if specified file exists locally 
 	if (CheckFile($listFileLocal)) { // if list file exists on the local system, use it right away
 		return $listFileLocal; 
 	} else {
-		$localTarget = XDWCTEMP . md5($listFile) . '.txt';
-		if (CheckFile($localTarget) && (time() - filemtime($localTarget)) < LISTFILECACHEPERIOD) { // cache hit: cached list file exists locally and is still valid
+		$localTarget = XDWC_TEMP . md5($listFile) . '.txt';
+		if (CheckFile($localTarget) && (time() - filemtime($localTarget)) < XDWC_LIST_FILE_CACHE_PERIOD) { // cache hit: cached list file exists locally and is still valid
 			return $localTarget;
 		} else {
 			return FetchRemoteListFile($listFile, $localTarget);
@@ -83,7 +83,7 @@ function PrepareListFile($listFile) { // check if specified file exists locally 
 // main code
 
 $query = GetQuery(); // get the regular expression to search for
-$listFiles = GetListFiles(); // get an array of list files
+$listFiles = xdwc_get_list_files(); // get an array of list files
 
 // get requested packs
 $packs = array();
@@ -113,7 +113,7 @@ usort($packs, function($a, $b) // sort Pack objects by their name value
     return strcmp($a->name, $b->name); // not UTF-8 aware yet
 }); 
 
-$columns = GetColumns(); // get an array of Column objects
+$columns = xdwc_get_columns(); // get an array of Column objects
 
 // output actual HTML ?>
 <form role="search" method="get" class="search-form" action="<?php echo plugin_dir_url(__FILE__); ?>search-redirect.php">
